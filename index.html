@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="The Storyteller's Journey - An educational adventure game for children with mini-games and interactive stories">
-    <meta name="keywords" content="children's game, educational, adventure, storytelling, kids">
     <title>The Storyteller's Journey</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
     <style>
         * {
             margin: 0;
@@ -779,4 +776,396 @@
                     let buttonDisabled = true;
                     
                     if (completedFinalGame || (i === 5 && canRead)) {
-                        buttonText =
+                        buttonText = 'Read Final Chapter';
+                        buttonAction = `onclick="Game.showStoryView(${i})"`;
+                        buttonDisabled = false;
+                    } else if (canPlay) {
+                        buttonText = 'Play Mini-Game';
+                        buttonAction = `onclick="Game.startMinigame(${i})"`;
+                        buttonDisabled = false;
+                    } else if (canRead) {
+                        buttonText = 'Read Chapter';
+                        buttonAction = `onclick="Game.showStoryView(${i})"`;
+                        buttonDisabled = false;
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="chapter-number">${i}</div>
+                        <div class="chapter-title">${this.stories[i].title}</div>
+                        <button class="chapter-button" ${buttonAction} ${buttonDisabled ? 'disabled' : ''}>${buttonText}</button>
+                    `;
+                    
+                    grid.appendChild(card);
+                }
+            },
+
+            loadStory: function(chapter) {
+                const story = this.stories[chapter];
+                const illustration = document.getElementById('story-illustration');
+                illustration.className = `story-illustration ${story.illustration}`;
+                illustration.textContent = '';
+                document.getElementById('story-text').textContent = story.text;
+            },
+
+            readStoryAloud: function() {
+                const text = document.getElementById('story-text').textContent;
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 0.8;
+                    utterance.pitch = 1.1;
+                    speechSynthesis.speak(utterance);
+                } else {
+                    alert("Story reading is not supported in your browser, but you can read along!");
+                }
+            },
+
+            startMinigame: function(chapter) {
+                this.state.currentChapter = chapter;
+                this.state.minigameComplete = false;
+                this.state.clickedNumbers = [];
+                
+                const minigame = this.minigames[chapter];
+                document.getElementById('minigame-title').textContent = minigame.title;
+                document.getElementById('minigame-instructions').textContent = minigame.instructions;
+                document.getElementById('success-message').style.display = 'none';
+                document.getElementById('complete-button').style.display = 'none';
+                
+                this.showMinigameView();
+                this.loadMinigame(minigame.type);
+            },
+
+            loadMinigame: function(type) {
+                const area = document.getElementById('minigame-area');
+                area.innerHTML = '';
+                
+                switch(type) {
+                    case 'backpack':
+                        this.loadBackpackGame(area);
+                        break;
+                    case 'pattern':
+                        this.loadPatternGame(area);
+                        break;
+                    case 'sound':
+                        this.loadSoundGame(area);
+                        break;
+                    case 'number':
+                        this.loadNumberGame(area);
+                        break;
+                    case 'gemstone':
+                        this.loadGemstoneGame(area);
+                        break;
+                }
+            },
+
+            loadBackpackGame: function(area) {
+                area.innerHTML = `
+                    <div class="backpack-preview" id="backpack-preview">
+                        <div class="backpack-items" id="selected-items">
+                            <!-- Selected items will appear here -->
+                        </div>
+                    </div>
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #374151; font-weight: 600;">Choose Your Explorer Gear:</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 15px; max-width: 600px; margin: 0 auto;">
+                        <div class="gear-option" onclick="Game.selectGear('compass', '🧭', this)">
+                            🧭
+                            <div class="gear-label">Compass</div>
+                        </div>
+                        <div class="gear-option" onclick="Game.selectGear('rope', '🪢', this)">
+                            🪢
+                            <div class="gear-label">Rope</div>
+                        </div>
+                        <div class="gear-option" onclick="Game.selectGear('flashlight', '🔦', this)">
+                            🔦
+                            <div class="gear-label">Flashlight</div>
+                        </div>
+                        <div class="gear-option" onclick="Game.selectGear('map', '🗺️', this)">
+                            🗺️
+                            <div class="gear-label">Map</div>
+                        </div>
+                        <div class="gear-option" onclick="Game.selectGear('food', '🥪', this)">
+                            🥪
+                            <div class="gear-label">Food</div>
+                        </div>
+                        <div class="gear-option" onclick="Game.selectGear('water', '💧', this)">
+                            💧
+                            <div class="gear-label">Water</div>
+                        </div>
+                        <div class="gear-option" onclick="Game.selectGear('firstaid', '🩹', this)">
+                            🩹
+                            <div class="gear-label">First Aid</div>
+                        </div>
+                        <div class="gear-option" onclick="Game.selectGear('binoculars', '🔭', this)">
+                            🔭
+                            <div class="gear-label">Binoculars</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 0.95rem;">
+                        Select at least 3 items to pack your backpack!
+                    </div>
+                `;
+                
+                this.state.selectedGear = 0;
+            },
+
+            selectGear: function(gearType, emoji, element) {
+                if (!element.classList.contains('selected')) {
+                    element.classList.add('selected');
+                    this.state.backpack[gearType] = true;
+                    this.state.selectedGear = (this.state.selectedGear || 0) + 1;
+                    
+                    const selectedItems = document.getElementById('selected-items');
+                    const gearItem = document.createElement('div');
+                    gearItem.style.cssText = `
+                        font-size: 1.5rem;
+                        background: rgba(255,255,255,0.9);
+                        border-radius: 8px;
+                        padding: 8px;
+                        margin: 4px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        border: 1px solid #e5e7eb;
+                    `;
+                    gearItem.textContent = emoji;
+                    selectedItems.appendChild(gearItem);
+                    
+                    if (this.state.selectedGear >= 3) {
+                        setTimeout(() => {
+                            this.completeMinigame();
+                        }, 1000);
+                    }
+                }
+            },
+
+            loadPatternGame: function(area) {
+                area.innerHTML = `
+                    <div class="pattern-grid">
+                        <div class="pattern-item">🍎</div>
+                        <div class="pattern-item">🍌</div>
+                        <div class="pattern-item">🍎</div>
+                        <div class="pattern-item">🍌</div>
+                        <div class="pattern-item" id="pattern-answer">?</div>
+                    </div>
+                    <h3 style="text-align: center; color: #374151; margin-bottom: 20px;">What comes next in the pattern?</h3>
+                    <div class="pattern-choices">
+                        <div class="pattern-item" onclick="Game.selectPattern('🍎')">🍎</div>
+                        <div class="pattern-item" onclick="Game.selectPattern('🍌')">🍌</div>
+                        <div class="pattern-item" onclick="Game.selectPattern('🍊')">🍊</div>
+                    </div>
+                `;
+            },
+
+            selectPattern: function(choice) {
+                const answerElement = document.getElementById('pattern-answer');
+                if (choice === '🍎') {
+                    answerElement.textContent = '🍎';
+                    answerElement.classList.add('correct');
+                    this.completeMinigame();
+                } else {
+                    alert("Try again! Look at the pattern: 🍎🍌🍎🍌... what comes next?");
+                }
+            },
+
+            loadSoundGame: function(area) {
+                area.innerHTML = `
+                    <div style="text-align: center;">
+                        <button class="sound-button" onclick="Game.playSound()">🔊 Play Forest Sound</button>
+                        <div class="sound-options">
+                            <div class="sound-option" onclick="Game.selectSound('owl')">
+                                🦉<br><strong>Wise Owl</strong><br><em>"Hoo-hoo"</em>
+                            </div>
+                            <div class="sound-option" onclick="Game.selectSound('bird')">
+                                🐦<br><strong>Song Bird</strong><br><em>"Tweet-tweet"</em>
+                            </div>
+                            <div class="sound-option" onclick="Game.selectSound('leaves')">
+                                🍃<br><strong>Rustling Leaves</strong><br><em>"Whoosh"</em>
+                            </div>
+                            <div class="sound-option" onclick="Game.selectSound('water')">
+                                💧<br><strong>Flowing Water</strong><br><em>"Babble-splash"</em>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            playSound: function() {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance("Hoo hoo");
+                    utterance.rate = 0.5;
+                    utterance.pitch = 0.8;
+                    speechSynthesis.speak(utterance);
+                }
+                
+                const button = document.querySelector('.sound-button');
+                const originalText = button.innerHTML;
+                button.innerHTML = "🦉 Hoo-hoo!";
+                button.style.background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+                }, 2000);
+            },
+
+            selectSound: function(choice) {
+                if (choice === 'owl') {
+                    const owlOption = document.querySelector('[onclick="Game.selectSound(\'owl\')"]');
+                    owlOption.classList.add('correct');
+                    this.completeMinigame();
+                } else {
+                    alert("That's not quite right. Listen again and think about what makes a 'hoo-hoo' sound!");
+                }
+            },
+
+            loadNumberGame: function(area) {
+                const numbers = [3, 1, 5, 2, 8, 4, 7, 6, 10, 9];
+                this.state.clickedNumbers = [];
+                
+                area.innerHTML = `
+                    <div class="number-stones">
+                        ${numbers.map(num => 
+                            `<button class="number-stone" onclick="Game.clickNumber(${num}, this)">${num}</button>`
+                        ).join('')}
+                    </div>
+                    <div class="progress-text" id="number-progress">
+                        Click the magic stones in order: 1, 2, 3... to build your bridge!
+                    </div>
+                `;
+            },
+
+            clickNumber: function(num, element) {
+                const expectedNumber = this.state.clickedNumbers.length + 1;
+                
+                if (num === expectedNumber) {
+                    this.state.clickedNumbers.push(num);
+                    element.classList.add('clicked');
+                    element.disabled = true;
+                    
+                    const progressElement = document.getElementById('number-progress');
+                    if (this.state.clickedNumbers.length === 10) {
+                        progressElement.innerHTML = '<span style="color: #10b981; font-weight: 600;">🌉 Perfect! The magical bridge appears!</span>';
+                        this.completeMinigame();
+                    } else {
+                        progressElement.innerHTML = `<span style="color: #667eea;">Excellent! Next stone: <strong>${this.state.clickedNumbers.length + 1}</strong></span>`;
+                    }
+                } else {
+                    alert(`Look for the magic stone with number ${expectedNumber}!`);
+                }
+            },
+
+            loadGemstoneGame: function(area) {
+                const gems = [
+                    { emoji: '💎', name: 'Diamond', color: '#e5e7eb' },
+                    { emoji: '💍', name: 'Golden Ring', color: '#fbbf24' },
+                    { emoji: '🔮', name: 'Crystal Ball', color: '#8b5cf6' },
+                    { emoji: '💚', name: 'Emerald Heart', color: '#10b981' },
+                    { emoji: '💙', name: 'Sapphire Heart', color: '#3b82f6' },
+                    { emoji: '💜', name: 'Amethyst Heart', color: '#8b5cf6' },
+                    { emoji: '❤️', name: 'Ruby Heart', color: '#ef4444' },
+                    { emoji: '🧿', name: 'Mystic Eye', color: '#06b6d4' }
+                ];
+                
+                area.innerHTML = `
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <h3 style="color: #374151; font-size: 1.4rem; margin-bottom: 12px; font-weight: 600;">✨ Enchanted Treasure Cave ✨</h3>
+                        <p style="color: #6b7280; font-size: 1rem;">Discover the magical gems hidden within the ancient cave!</p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        ${gems.map((gem) => `
+                            <div class="gem-card" 
+                                 style="background: linear-gradient(135deg, ${gem.color}15 0%, ${gem.color}08 100%); 
+                                        border: 2px solid ${gem.color}60; 
+                                        border-radius: 16px; 
+                                        padding: 20px; 
+                                        text-align: center; 
+                                        cursor: pointer; 
+                                        transition: all 0.3s ease;
+                                        transform: scale(1);
+                                        box-shadow: 0 6px 20px ${gem.color}25;"
+                                 onclick="Game.collectGem(this, '${gem.emoji}', '${gem.name}')"
+                                 data-gem="${gem.emoji}">
+                                <div style="font-size: 2.5rem; margin-bottom: 12px;">${gem.emoji}</div>
+                                <div style="font-size: 0.9rem; color: #374151; font-weight: 600;">${gem.name}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="progress-bar" style="background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-radius: 12px; height: 12px; margin-bottom: 16px; border: 1px solid #d1d5db; overflow: hidden;">
+                        <div id="gem-progress-bar" style="background: linear-gradient(90deg, #10b981, #34d399, #6ee7b7); height: 100%; border-radius: 11px; width: 0%; transition: width 0.8s ease;"></div>
+                    </div>
+                    
+                    <div class="progress-text" id="gem-progress" style="text-align: center; font-size: 1.1rem; color: #374151; font-weight: 500;">
+                        Collect at least 5 magical gems to unlock the ancient treasure! (0/5 found)
+                    </div>
+                `;
+                
+                this.state.gemsCollected = 0;
+            },
+
+            collectGem: function(element, gem, name) {
+                if (!element.classList.contains('collected')) {
+                    element.classList.add('collected');
+                    element.style.pointerEvents = 'none';
+                    element.style.opacity = '0.7';
+                    element.style.transform = 'scale(0.95)';
+                    
+                    this.state.gemsCollected = (this.state.gemsCollected || 0) + 1;
+                    
+                    const progressBar = document.getElementById('gem-progress-bar');
+                    const progressPercent = (this.state.gemsCollected / 8) * 100;
+                    progressBar.style.width = progressPercent + '%';
+                    
+                    const progressElement = document.getElementById('gem-progress');
+                    if (this.state.gemsCollected >= 5) {
+                        progressElement.innerHTML = `
+                            <div style="color: #10b981; font-weight: 700; font-size: 1.2rem; margin-bottom: 8px;">🎉 Incredible! You discovered ${this.state.gemsCollected} magical gems! 🎉</div>
+                            <div style="color: #6b7280; font-size: 1rem;">The ancient treasure chest glows with mystical energy!</div>
+                        `;
+                        setTimeout(() => {
+                            this.completeMinigame();
+                        }, 2000);
+                    } else {
+                        progressElement.innerHTML = `
+                            <div style="color: #667eea; font-weight: 600; margin-bottom: 4px;">✨ Wonderful! You found the ${name}! ✨</div>
+                            <div style="color: #6b7280;">Seek ${5 - this.state.gemsCollected} more gems to unlock the treasure (${this.state.gemsCollected}/5 discovered)</div>
+                        `;
+                    }
+                }
+            },
+
+            completeMinigame: function() {
+                this.state.minigameComplete = true;
+                document.getElementById('success-message').style.display = 'block';
+                document.getElementById('complete-button').style.display = 'inline-block';
+            },
+
+            completeChapter: function() {
+                const nextChapter = this.state.currentChapter + 1;
+                if (nextChapter <= 5) {
+                    this.state.unlockedChapters.push(nextChapter);
+                }
+                
+                setTimeout(() => {
+                    if (this.state.currentChapter === 5) {
+                        if (confirm("🎉 Congratulations! You've completed the entire magical adventure! 🎉\n\nWould you like to read the final chapter?")) {
+                            this.showStoryView(5);
+                        } else {
+                            this.showMainView();
+                        }
+                    } else {
+                        if (confirm(`🌟 Amazing work! You've unlocked Chapter ${nextChapter}! 🌟\n\nWould you like to read the story you just unlocked?`)) {
+                            this.showStoryView(this.state.currentChapter);
+                        } else {
+                            this.showMainView();
+                        }
+                    }
+                }, 1500);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            Game.init();
+            console.log("Enhanced Explorer Game ready to play!");
+        });
+    </script>
+</body>
+</html>
